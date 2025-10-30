@@ -2,6 +2,8 @@ import logging
 from dotenv import load_dotenv
 from datetime import datetime
 import re
+import math
+import json
 
 from livekit.agents import (
     Agent,
@@ -16,7 +18,7 @@ from livekit.agents import (
 from livekit.plugins import deepgram, silero, google, cartesia
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 
-from database import HotelDatabase
+from database import LoanDatabase
 
 load_dotenv()
 
@@ -24,14 +26,14 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("my-agent")
 
 # Initialize database
-db = HotelDatabase()
+db = LoanDatabase()
 
 class MyAgent(Agent):
     def __init__(self, user_id: str) -> None:
         self.user_id = user_id
         
         # Get user info and conversation history
-        user_info = db.get_user(user_id)
+        user_info = db.get_lead(user_id)
         conversation_history = db.get_conversation_history(user_id, limit=5)
         
         # Build context from history
@@ -44,8 +46,6 @@ class MyAgent(Agent):
                 user_profile_info += f"Guest Name: {user_info['name']}\n"
             if user_info.get('phone'):
                 user_profile_info += f"Phone: {user_info['phone']}\n"
-            if user_info.get('email'):
-                user_profile_info += f"Email: {user_info['email']}\n"
         
         if conversation_history:
             history_context += "\n\nRecent conversation history:"
@@ -63,7 +63,7 @@ class MyAgent(Agent):
 IMPORTANT - Information Collection Priority:
 - If you don't have the guest's NAME, politely ask for it early in the conversation (e.g., "May I have your name, please?")
 - If you don't have the guest's PHONE NUMBER, ask for it before confirming any booking (e.g., "Could you please share your contact number?")
-- Use the save_user_info tool IMMEDIATELY after receiving name or phone number
+- Use the save_customer_info tool IMMEDIATELY after receiving name or phone number
 - Make this feel natural and conversational, not like a form-filling exercise
 - You can ask for both together: "May I have your name and contact number to proceed with the booking?"
 """
@@ -171,6 +171,7 @@ Core Directives & Behavioral Guidelines:
 
 6. Tools to Use (IN ORDER):
    - save_customer_info: Save name, phone, employment details (USE IMMEDIATELY after collecting)
+   - save_loan_purpose: After understanding why the customer needs a loan, use this tool to save a brief summary (e.g., "Home renovation," "Daughter's wedding," "Medical emergency").
    - check_eligibility: Verify loan eligibility based on income
    - calculate_emi: Show exact EMI calculations
    - generate_sanction_letter: Create instant pre-approval letter
@@ -228,158 +229,81 @@ Your Employee ID: RJ2024MUJ (share if asked for credibility)"""
         
 
     @function_tool
-    async def save_user_info(self, name: str = None, phone: str = None, email: str = None) -> str:
-        """Save customer information like name, phone number, or email. Call this immediately when you receive any of this information."""
+    async def save_customer_info(self, name: str = None, phone: str = None) -> str:
+        """Save customer's name and phone number. Call this immediately when you receive any of this information."""
         try:
             # Validate and format phone number if provided
             if phone:
-                # Remove any spaces, dashes, or special characters
                 phone = re.sub(r'[^\d+]', '', phone)
-                # Ensure it's a valid format
                 if not re.match(r'^\+?\d{10,15}$', phone):
-                    return "I couldn't save that phone number. Could you please provide a valid 10-digit mobile number?"
+                    return "I couldn't save that phone number. It doesn't seem valid. Could you please provide a valid 10-digit mobile number?"
             
-            db.create_or_update_user(self.user_id, name=name, phone=phone, email=email)
-            logger.info(f"Saved user info for {self.user_id}: name={name}, phone={phone}, email={email}")
+            db.create_or_update_lead(self.user_id, name=name, phone=phone)
+            logger.info(f"Saved customer info for {self.user_id}: name={name}, phone={phone}")
             
-            # Create a friendly response
             response_parts = []
             if name:
                 response_parts.append(f"your name as {name}")
             if phone:
                 response_parts.append(f"your contact number")
-            if email:
-                response_parts.append(f"your email")
             
             if response_parts:
-                return f"Perfect! I've saved {' and '.join(response_parts)} in our system."
+                return f"Thank you. I've noted down {' and '.join(response_parts)}."
             else:
-                return "Information saved successfully."
+                return "Information saved."
                 
         except Exception as e:
-            logger.error(f"Error saving user info: {e}")
+            logger.error(f"Error saving customer info: {e}")
             return "I apologize, but I encountered an error saving your information. Could you please repeat that?"
 
     @function_tool
-    async def create_room_booking(
-        self, 
-        room_type: str,
-        check_in_date: str,
-        check_out_date: str,
-        num_adults: int,
-        num_children: int = 0,
-        special_requests: str = ""
-    ) -> str:
+    async def save_loan_purpose(self, purpose: str) -> str:
         """
-        Create a hotel room booking. Only use this after you have confirmed the guest's name and phone number.
+        Save the customer's reason for needing the loan.
         
         Args:
-            room_type: Type of room (Standard, Deluxe, or Presidential Suite)
-            check_in_date: Check-in date in YYYY-MM-DD format
-            check_out_date: Check-out date in YYYY-MM-DD format
-            num_adults: Number of adults
-            num_children: Number of children (default 0)
-            special_requests: Any special requests
+            purpose: A brief, summarized reason for the loan (e.g., "Daughter's wedding", "Home renovation").
         """
         try:
-            # Verify we have guest information before booking
-            user_info = db.get_user(self.user_id)
-            if not user_info or not user_info.get('name') or not user_info.get('phone'):
-                return "Before I can confirm your booking, I need to collect some information. May I have your name and contact number, please?"
-            
-            booking_id = db.create_room_booking(
-                user_id=self.user_id,
-                room_type=room_type,
-                check_in_date=check_in_date,
-                check_out_date=check_out_date,
-                num_adults=num_adults,
-                num_children=num_children,
-                special_requests=special_requests
-            )
-            
-            logger.info(f"Created room booking {booking_id} for user {self.user_id}")
-            
-            guest_name = user_info.get('name', 'Guest')
-            return f"Wonderful, {guest_name}! Your {room_type} room has been confirmed. Your booking ID is {booking_id}. Check-in is on {check_in_date} and check-out is on {check_out_date}. We'll send a confirmation to your registered number. Looking forward to welcoming you!"
-            
+            db.create_or_update_lead(self.user_id, loan_purpose=purpose)
+            logger.info(f"Saved loan purpose for {self.user_id}: {purpose}")
+            return f"Thank you for sharing. I've made a note that the loan is for {purpose}."
         except Exception as e:
-            logger.error(f"Error creating room booking: {e}")
-            return "I apologize, but I encountered an error while processing your booking. Please try again."
+            logger.error(f"Error saving loan purpose: {e}")
+            return "I had a small issue noting that down, but we can continue."
 
     @function_tool
-    async def create_restaurant_booking(
-        self,
-        restaurant_name: str,
-        booking_date: str,
-        booking_time: str,
-        num_guests: int,
-        special_requests: str = ""
-    ) -> str:
+    async def save_loan_details(self, loan_amount: float, loan_tenure_months: int) -> str:
         """
-        Create a restaurant table booking. Only use this after you have confirmed the guest's name and phone number.
+        Save the desired loan amount and tenure for the customer.
         
         Args:
-            restaurant_name: Name of restaurant (Surahi, Oasis, or The Rooftop Lounge)
-            booking_date: Date in YYYY-MM-DD format
-            booking_time: Time in HH:MM format (24-hour)
-            num_guests: Number of guests
-            special_requests: Special requests or dietary restrictions
+            loan_amount: The amount of money the customer wants to borrow.
+            loan_tenure_months: The period in months over which the customer wants to repay the loan.
         """
         try:
-            # Verify we have guest information before booking
-            user_info = db.get_user(self.user_id)
-            if not user_info or not user_info.get('name') or not user_info.get('phone'):
-                return "Before I can reserve your table, I need to collect some information. May I have your name and contact number, please?"
+            db.create_or_update_lead(self.user_id, loan_amount=loan_amount, loan_tenure=loan_tenure_months)
+            logger.info(f"Saved loan details for {self.user_id}: amount={loan_amount}, tenure={loan_tenure_months} months")
             
-            booking_id = db.create_restaurant_booking(
-                user_id=self.user_id,
-                restaurant_name=restaurant_name,
-                booking_date=booking_date,
-                booking_time=booking_time,
-                num_guests=num_guests,
-                special_requests=special_requests
-            )
+            # Calculate EMI to provide immediate feedback
+            # Assuming a default interest rate for calculation, e.g., 10.99%
+            interest_rate_pa = 10.99
+            monthly_rate = (interest_rate_pa / 100) / 12
             
-            logger.info(f"Created restaurant booking {booking_id} for user {self.user_id}")
-            
-            guest_name = user_info.get('name', 'Guest')
-            return f"Perfect, {guest_name}! Your table for {num_guests} at {restaurant_name} is confirmed for {booking_date} at {booking_time}. Your booking ID is {booking_id}. We'll send you a confirmation message. We look forward to serving you!"
-            
-        except Exception as e:
-            logger.error(f"Error creating restaurant booking: {e}")
-            return "I apologize, but I encountered an error while making your restaurant reservation. Please try again."
+            if monthly_rate > 0:
+                emi = (loan_amount * monthly_rate * (1 + monthly_rate)**loan_tenure_months) / ((1 + monthly_rate)**loan_tenure_months - 1)
+                emi_rounded = math.ceil(emi)
+                return (f"Great! For a loan of ₹{loan_amount:,.0f} over {loan_tenure_months} months, "
+                        f"your approximate EMI would be around ₹{emi_rounded:,.0f} per month. "
+                        f"Does that sound manageable for you?")
+            else: # Handle zero interest case
+                emi = loan_amount / loan_tenure_months
+                return (f"Got it. A loan of ₹{loan_amount:,.0f} for {loan_tenure_months} months. "
+                        f"Your EMI would be ₹{math.ceil(emi):,.0f}. Is that correct?")
 
-    @function_tool
-    async def get_my_bookings(self) -> str:
-        """Get all bookings for the current user."""
-        try:
-            user_info = db.get_user(self.user_id)
-            room_bookings = db.get_user_room_bookings(self.user_id)
-            restaurant_bookings = db.get_user_restaurant_bookings(self.user_id)
-            
-            guest_name = user_info.get('name', 'Guest') if user_info else 'Guest'
-            result = f"Here are your bookings, {guest_name}:\n\n"
-            
-            if room_bookings:
-                result += "Room Bookings:\n"
-                for booking in room_bookings:
-                    if booking['status'] == 'confirmed':
-                        result += f"- {booking['room_type']} room, {booking['check_in_date']} to {booking['check_out_date']}, Booking ID: {booking['booking_id']}\n"
-            
-            if restaurant_bookings:
-                result += "\nRestaurant Bookings:\n"
-                for booking in restaurant_bookings:
-                    if booking['status'] == 'confirmed':
-                        result += f"- {booking['restaurant_name']}, {booking['booking_date']} at {booking['booking_time']}, {booking['num_guests']} guests, Booking ID: {booking['booking_id']}\n"
-            
-            if not room_bookings and not restaurant_bookings:
-                result = f"{guest_name}, you don't have any bookings with us yet. Would you like to make a reservation?"
-            
-            return result
-            
         except Exception as e:
-            logger.error(f"Error fetching bookings: {e}")
-            return "I apologize, but I encountered an error retrieving your bookings."
+            logger.error(f"Error saving loan details: {e}")
+            return "I apologize, I had trouble processing those loan details. Could you please state the amount and tenure again?"
 
 def prewarm(proc: JobProcess):
     """Pre-warm models into memory"""
@@ -395,7 +319,7 @@ async def entrypoint(ctx: JobContext):
     logger.info(f"Starting session for user: {user_id}")
     
     # Create or update user record
-    db.create_or_update_user(user_id)
+    db.create_or_update_lead(user_id)
     
     session = AgentSession(
         vad=ctx.proc.userdata["vad"],
@@ -411,37 +335,47 @@ async def entrypoint(ctx: JobContext):
     # Hook to save conversations - MUST be synchronous functions
     @session.on("agent_speech")
     def on_agent_speech(text: str):
-        db.add_conversation(user_id, text, "Agent")
+        db.add_conversation(user_id, text, "Loan assistant")
     
     @session.on("user_speech")
     def on_user_speech(text: str):
         db.add_conversation(user_id, text, "User")
     
-    await session.start(agent=agent, room=ctx.room)
-    
-    # Get user info for personalized greeting
-    user_info = db.get_user(user_id)
-    now = datetime.now()
-    current_hour = now.hour
+    try:
+        await session.start(agent=agent, room=ctx.room)
+        
+        # Get user info for personalized greeting
+        user_info = db.get_lead(user_id)
+        now = datetime.now()
+        current_hour = now.hour
 
-    time_based_greeting = ""
-    if 6 <= current_hour < 12:
-        time_based_greeting = "Good morning! Namaste, this is Raj Sharma from MUJ Bank. I hope you're having a wonderful day!"
-    elif 12 <= current_hour < 17:
-        time_based_greeting = "Good afternoon! Namaste, this is Raj Sharma from MUJ Bank. Hope your day is going well!"
-    else:
-        time_based_greeting = "Good evening! Namaste, this is Raj Sharma from MUJ Bank. Thank you for taking time to speak with me!"
+        time_based_greeting = ""
+        if 6 <= current_hour < 12:
+            time_based_greeting = "Good morning! Namaste, this is Raj Sharma from MUJ Bank. I hope you're having a wonderful day!"
+        elif 12 <= current_hour < 17:
+            time_based_greeting = "Good afternoon! Namaste, this is Raj Sharma from MUJ Bank. Hope your day is going well!"
+        else:
+            time_based_greeting = "Good evening! Namaste, this is Raj Sharma from MUJ Bank. Thank you for taking time to speak with me!"
 
-    greeting = ""
-    if user_info and user_info.get('name'):
-        name = user_info['name']
-        greeting = f"{time_based_greeting} It's wonderful to speak with you again, {name} ji. How can I assist you with your financial needs today?"
-    else:
-        greeting = (f"{time_based_greeting} I'm here to help you with instant personal loan solutions that can "
-                    "transform your plans into reality. May I know whom I have the pleasure of speaking with?")
-    
-    logger.info("🎤 Sending greeting to user...")
-    await session.say(greeting, allow_interruptions=True)
+        greeting = ""
+        if user_info and user_info.get('name'):
+            name = user_info['name']
+            greeting = f"{time_based_greeting} It's wonderful to speak with you again, {name} ji. How can I assist you with your financial needs today?"
+        else:
+            greeting = (f"{time_based_greeting} I'm here to help you with instant personal loan solutions that can "
+                        "transform your plans into reality. May I know whom I have the pleasure of speaking with?")
+        
+        logger.info("🎤 Sending greeting to user...")
+        await session.say(greeting, allow_interruptions=True)
+
+        # Wait for the session to end
+        await session.wait_for_end()
+
+    finally:
+        # This block will run when the call ends or an error occurs
+        logger.info(f"Session ended for user {user_id}. Saving final transcript.")
+        db.save_final_transcript(user_id)
+
 
 if __name__ == "__main__":
     cli.run_app(

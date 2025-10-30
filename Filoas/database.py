@@ -1,506 +1,158 @@
 import sqlite3
 import logging
 from datetime import datetime
-from typing import Optional, Dict, List
 import json
-from twilio_service import TwilioService
 
-logger = logging.getLogger("database")
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-class HotelDatabase:
-    def __init__(self, db_path: str = "hotel.db"):
-        self.db_path = db_path
-        self.twilio = TwilioService()
-        self.init_database()
-        self.migrate_database()
-    
+class LoanDatabase:
+    def __init__(self, db_name='loan_assistant.db'):
+        self.db_name = db_name
+        self.create_tables()
+
     def get_connection(self):
-        """Get a database connection"""
-        return sqlite3.connect(self.db_path)
-    
-    def migrate_database(self):
-        """Migrate database to add new columns if they don't exist"""
+        """Creates a database connection."""
+        conn = sqlite3.connect(self.db_name)
+        conn.row_factory = sqlite3.Row
+        return conn
+
+    def create_tables(self):
+        """Create the necessary tables if they don't exist."""
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        # Check if total_bookings column exists
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [row[1] for row in cursor.fetchall()]
-        
-        if 'total_bookings' not in columns:
-            logger.info("Adding total_bookings column to users table")
-            cursor.execute("ALTER TABLE users ADD COLUMN total_bookings INTEGER DEFAULT 0")
-        
-        if 'is_verified' not in columns:
-            logger.info("Adding is_verified column to users table")
-            cursor.execute("ALTER TABLE users ADD COLUMN is_verified INTEGER DEFAULT 0")
-        
-        conn.commit()
-        conn.close()
-        logger.info("Database migration completed")
-    
-    def init_database(self):
-        """Initialize database tables"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # Users table - stores user information and preferences
+        # Create a table for loan leads
         cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                user_id TEXT PRIMARY KEY,
+            CREATE TABLE IF NOT EXISTS loan_leads (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL UNIQUE,
                 name TEXT,
                 phone TEXT,
-                email TEXT,
-                preferences TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                last_interaction TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                total_bookings INTEGER DEFAULT 0,
-                is_verified INTEGER DEFAULT 0
+                loan_amount REAL,
+                loan_tenure_months INTEGER,
+                loan_purpose TEXT,
+                transcript TEXT,
+                created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                last_interaction DATETIME
             )
         """)
         
-        # Conversation history table
+        # Create a table for conversation history
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS conversations (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT,
-                message TEXT,
-                speaker TEXT,
-                timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (user_id)
-            )
-        """)
-        
-        # Room bookings table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS room_bookings (
-                booking_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT,
-                room_type TEXT,
-                check_in_date DATE,
-                check_out_date DATE,
-                num_adults INTEGER,
-                num_children INTEGER DEFAULT 0,
-                special_requests TEXT,
-                status TEXT DEFAULT 'confirmed',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (user_id)
-            )
-        """)
-        
-        # Restaurant bookings table
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS restaurant_bookings (
-                booking_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT,
-                restaurant_name TEXT,
-                booking_date DATE,
-                booking_time TEXT,
-                num_guests INTEGER,
-                special_requests TEXT,
-                status TEXT DEFAULT 'confirmed',
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                FOREIGN KEY (user_id) REFERENCES users (user_id)
+                user_id TEXT NOT NULL,
+                speaker TEXT NOT NULL,
+                message TEXT NOT NULL,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES loan_leads (user_id)
             )
         """)
         
         conn.commit()
         conn.close()
-        logger.info("Database initialized successfully")
-    
-    # User Management
-    def create_or_update_user(self, user_id: str, name: str = None, 
-                             phone: str = None, email: str = None, 
-                             preferences: Dict = None):
-        """Create or update user information"""
+        logging.info("Database tables 'loan_leads' and 'conversations' are ready.")
+
+    def get_lead(self, user_id: str):
+        """Get lead information for a given user_id."""
+        conn = self.get_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM loan_leads WHERE user_id = ?", (user_id,))
+        lead = cursor.fetchone()
+        conn.close()
+        return dict(lead) if lead else None
+
+    def create_or_update_lead(self, user_id: str, name: str = None, phone: str = None, loan_amount: float = None, loan_tenure: int = None, loan_purpose: str = None):
+        """Create a new lead or update an existing one."""
         conn = self.get_connection()
         cursor = conn.cursor()
         
-        cursor.execute("SELECT user_id FROM users WHERE user_id = ?", (user_id,))
-        existing = cursor.fetchone()
+        now = datetime.now()
         
-        if existing:
-            updates = []
-            params = []
+        cursor.execute("SELECT id FROM loan_leads WHERE user_id = ?", (user_id,))
+        exists = cursor.fetchone()
+        
+        if exists:
+            # Update existing lead
+            query = "UPDATE loan_leads SET last_interaction = ?"
+            params = [now]
             if name:
-                updates.append("name = ?")
+                query += ", name = ?"
                 params.append(name)
             if phone:
-                updates.append("phone = ?")
+                query += ", phone = ?"
                 params.append(phone)
-            if email:
-                updates.append("email = ?")
-                params.append(email)
-            if preferences:
-                updates.append("preferences = ?")
-                params.append(json.dumps(preferences))
+            if loan_amount:
+                query += ", loan_amount = ?"
+                params.append(loan_amount)
+            if loan_tenure:
+                query += ", loan_tenure_months = ?"
+                params.append(loan_tenure)
+            if loan_purpose:
+                query += ", loan_purpose = ?"
+                params.append(loan_purpose)
             
-            # Mark as verified if we have both name and phone
-            cursor.execute("SELECT name, phone FROM users WHERE user_id = ?", (user_id,))
-            current = cursor.fetchone()
-            current_name = current[0] if current else None
-            current_phone = current[1] if current else None
-            
-            final_name = name if name else current_name
-            final_phone = phone if phone else current_phone
-            
-            if final_name and final_phone:
-                updates.append("is_verified = 1")
-            
-            updates.append("last_interaction = ?")
-            params.append(datetime.now())
+            query += " WHERE user_id = ?"
             params.append(user_id)
             
-            if updates:
-                cursor.execute(
-                    f"UPDATE users SET {', '.join(updates)} WHERE user_id = ?",
-                    params
-                )
+            cursor.execute(query, tuple(params))
+            logging.info(f"Updated lead for user_id: {user_id}")
         else:
-            is_verified = 1 if (name and phone) else 0
-            cursor.execute("""
-                INSERT INTO users (user_id, name, phone, email, preferences, is_verified)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (user_id, name, phone, email, json.dumps(preferences or {}), is_verified))
-        
+            # Create new lead
+            cursor.execute(
+                "INSERT INTO loan_leads (user_id, name, phone, loan_amount, loan_tenure_months, loan_purpose, last_interaction) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (user_id, name, phone, loan_amount, loan_tenure, loan_purpose, now)
+            )
+            logging.info(f"Created new lead for user_id: {user_id}")
+            
         conn.commit()
         conn.close()
-        logger.info(f"User {user_id} created/updated - name: {name}, phone: {phone}")
-    
-    def get_user(self, user_id: str) -> Optional[Dict]:
-        """Get user information"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # Get the user row
-        cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
-        row = cursor.fetchone()
-        
-        if not row:
-            conn.close()
-            return None
-        
-        # Get column names to handle different schema versions
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [col[1] for col in cursor.fetchall()]
-        
-        conn.close()
-        
-        result = {
-            'user_id': row[0],
-            'name': row[1],
-            'phone': row[2],
-            'email': row[3],
-            'preferences': json.loads(row[4]) if row[4] else {},
-            'created_at': row[5],
-            'last_interaction': row[6],
-        }
-        
-        # Add optional columns if they exist
-        if len(row) > 7:
-            result['total_bookings'] = row[7]
-        else:
-            result['total_bookings'] = 0
-            
-        if len(row) > 8:
-            result['is_verified'] = row[8]
-        else:
-            result['is_verified'] = 0
-        
-        return result
-    
-    # Conversation History
+
     def add_conversation(self, user_id: str, message: str, speaker: str):
-        """Add a conversation message"""
+        """Add a message to the conversation history."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO conversations (user_id, message, speaker)
-            VALUES (?, ?, ?)
-        """, (user_id, message, speaker))
-        
+        cursor.execute(
+            "INSERT INTO conversations (user_id, message, speaker) VALUES (?, ?, ?)",
+            (user_id, message, speaker)
+        )
         conn.commit()
         conn.close()
-    
-    def get_conversation_history(self, user_id: str, limit: int = 10) -> List[Dict]:
-        """Get recent conversation history"""
+
+    def get_conversation_history(self, user_id: str, limit: int = 10):
+        """Retrieve the recent conversation history for a user."""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT message, speaker, timestamp
-            FROM conversations
-            WHERE user_id = ?
-            ORDER BY timestamp DESC
-            LIMIT ?
-        """, (user_id, limit))
-        
-        rows = cursor.fetchall()
+        cursor.execute(
+            "SELECT speaker, message FROM conversations WHERE user_id = ? ORDER BY timestamp DESC LIMIT ?",
+            (user_id, limit)
+        )
+        history = cursor.fetchall()
         conn.close()
+        # Return in chronological order
+        return [dict(row) for row in reversed(history)]
+
+    def save_final_transcript(self, user_id: str):
+        """Fetches all conversation for a user and saves it as a JSON object in the transcript column."""
+        history = self.get_conversation_history(user_id, limit=1000) # Get full history
+        if not history:
+            return
+
+        # Standardize speaker names for the final transcript
+        formatted_history = []
+        for line in history:
+            speaker = "Loan assistant" if line['speaker'].lower() == 'agent' else 'User'
+            formatted_history.append({'speaker': speaker, 'message': line['message']})
+
+        transcript_json = json.dumps(formatted_history, indent=2)
         
-        return [
-            {'message': row[0], 'speaker': row[1], 'timestamp': row[2]}
-            for row in reversed(rows)
-        ]
-    
-    # Room Bookings
-    def create_room_booking(self, user_id: str, room_type: str, 
-                           check_in_date: str, check_out_date: str,
-                           num_adults: int, num_children: int = 0,
-                           special_requests: str = "") -> int:
-        """Create a room booking and send confirmation SMS"""
         conn = self.get_connection()
         cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO room_bookings 
-            (user_id, room_type, check_in_date, check_out_date, 
-             num_adults, num_children, special_requests)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-        """, (user_id, room_type, check_in_date, check_out_date,
-              num_adults, num_children, special_requests))
-        
-        booking_id = cursor.lastrowid
-        
-        # Increment total bookings for user
-        cursor.execute("""
-            UPDATE users 
-            SET total_bookings = total_bookings + 1
-            WHERE user_id = ?
-        """, (user_id,))
-        
-        conn.commit()
-        
-        # Get user details for SMS
-        cursor.execute("SELECT name, phone FROM users WHERE user_id = ?", (user_id,))
-        user_data = cursor.fetchone()
-        
-        conn.close()
-        
-        logger.info(f"Room booking created: {booking_id}")
-        
-        # Send confirmation SMS
-        if user_data and user_data[1]:  # Check if phone exists
-            guest_name = user_data[0] or "Guest"
-            phone = user_data[1]
-            
-            logger.info(f"Sending confirmation SMS to {phone}")
-            sms_sent = self.twilio.send_room_booking_confirmation(
-                phone=phone,
-                guest_name=guest_name,
-                booking_id=booking_id,
-                room_type=room_type,
-                check_in=check_in_date,
-                check_out=check_out_date
-            )
-            
-            if sms_sent:
-                logger.info(f"Confirmation SMS sent for booking {booking_id}")
-            else:
-                logger.warning(f"Failed to send SMS for booking {booking_id}")
-        else:
-            logger.warning(f"No phone number found for user {user_id}, SMS not sent")
-        
-        return booking_id
-    
-    def get_user_room_bookings(self, user_id: str) -> List[Dict]:
-        """Get all room bookings for a user"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT * FROM room_bookings
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-        """, (user_id,))
-        
-        rows = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                'booking_id': row[0],
-                'user_id': row[1],
-                'room_type': row[2],
-                'check_in_date': row[3],
-                'check_out_date': row[4],
-                'num_adults': row[5],
-                'num_children': row[6],
-                'special_requests': row[7],
-                'status': row[8],
-                'created_at': row[9]
-            }
-            for row in rows
-        ]
-    
-    # Restaurant Bookings
-    def create_restaurant_booking(self, user_id: str, restaurant_name: str,
-                                 booking_date: str, booking_time: str,
-                                 num_guests: int, special_requests: str = "") -> int:
-        """Create a restaurant booking and send confirmation SMS"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            INSERT INTO restaurant_bookings
-            (user_id, restaurant_name, booking_date, booking_time,
-             num_guests, special_requests)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (user_id, restaurant_name, booking_date, booking_time,
-              num_guests, special_requests))
-        
-        booking_id = cursor.lastrowid
-        
-        # Increment total bookings for user
-        cursor.execute("""
-            UPDATE users 
-            SET total_bookings = total_bookings + 1
-            WHERE user_id = ?
-        """, (user_id,))
-        
-        conn.commit()
-        
-        # Get user details for SMS
-        cursor.execute("SELECT name, phone FROM users WHERE user_id = ?", (user_id,))
-        user_data = cursor.fetchone()
-        
-        conn.close()
-        
-        logger.info(f"Restaurant booking created: {booking_id}")
-        
-        # Send confirmation SMS
-        if user_data and user_data[1]:  # Check if phone exists
-            guest_name = user_data[0] or "Guest"
-            phone = user_data[1]
-            
-            logger.info(f"Sending confirmation SMS to {phone}")
-            sms_sent = self.twilio.send_restaurant_booking_confirmation(
-                phone=phone,
-                guest_name=guest_name,
-                booking_id=booking_id,
-                restaurant_name=restaurant_name,
-                booking_date=booking_date,
-                booking_time=booking_time,
-                num_guests=num_guests
-            )
-            
-            if sms_sent:
-                logger.info(f"Confirmation SMS sent for booking {booking_id}")
-            else:
-                logger.warning(f"Failed to send SMS for booking {booking_id}")
-        else:
-            logger.warning(f"No phone number found for user {user_id}, SMS not sent")
-        
-        return booking_id
-    
-    def get_user_restaurant_bookings(self, user_id: str) -> List[Dict]:
-        """Get all restaurant bookings for a user"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT * FROM restaurant_bookings
-            WHERE user_id = ?
-            ORDER BY created_at DESC
-        """, (user_id,))
-        
-        rows = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                'booking_id': row[0],
-                'user_id': row[1],
-                'restaurant_name': row[2],
-                'booking_date': row[3],
-                'booking_time': row[4],
-                'num_guests': row[5],
-                'special_requests': row[6],
-                'status': row[7],
-                'created_at': row[8]
-            }
-            for row in rows
-        ]
-    
-    def cancel_booking(self, booking_id: int, booking_type: str):
-        """Cancel a booking and send notification SMS"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        table = "room_bookings" if booking_type == "room" else "restaurant_bookings"
-        
-        # Get booking and user details before cancelling
-        cursor.execute(f"""
-            SELECT b.user_id, u.name, u.phone
-            FROM {table} b
-            JOIN users u ON b.user_id = u.user_id
-            WHERE b.booking_id = ?
-        """, (booking_id,))
-        
-        result = cursor.fetchone()
-        
-        # Update booking status
-        cursor.execute(f"""
-            UPDATE {table}
-            SET status = 'cancelled'
-            WHERE booking_id = ?
-        """, (booking_id,))
-        
+        cursor.execute(
+            "UPDATE loan_leads SET transcript = ? WHERE user_id = ?",
+            (transcript_json, user_id)
+        )
         conn.commit()
         conn.close()
-        
-        logger.info(f"{booking_type} booking {booking_id} cancelled")
-        
-        # Send cancellation SMS
-        if result and result[2]:  # Check if phone exists
-            user_id, guest_name, phone = result
-            guest_name = guest_name or "Guest"
-            
-            self.twilio.send_cancellation_notification(
-                phone=phone,
-                guest_name=guest_name,
-                booking_id=booking_id,
-                booking_type=booking_type
-            )
-    
-    def get_all_users(self) -> List[Dict]:
-        """Get all users with their information"""
-        conn = self.get_connection()
-        cursor = conn.cursor()
-        
-        # Check if columns exist
-        cursor.execute("PRAGMA table_info(users)")
-        columns = [col[1] for col in cursor.fetchall()]
-        
-        has_total_bookings = 'total_bookings' in columns
-        has_is_verified = 'is_verified' in columns
-        
-        if has_total_bookings and has_is_verified:
-            cursor.execute("""
-                SELECT user_id, name, phone, email, created_at, total_bookings, is_verified
-                FROM users
-                ORDER BY last_interaction DESC
-            """)
-        else:
-            cursor.execute("""
-                SELECT user_id, name, phone, email, created_at
-                FROM users
-                ORDER BY last_interaction DESC
-            """)
-        
-        rows = cursor.fetchall()
-        conn.close()
-        
-        return [
-            {
-                'user_id': row[0],
-                'name': row[1] or 'Not provided',
-                'phone': row[2] or 'Not provided',
-                'email': row[3] or 'Not provided',
-                'created_at': row[4],
-                'total_bookings': row[5] if len(row) > 5 else 0,
-                'is_verified': 'Yes' if (len(row) > 6 and row[6]) else 'No'
-            }
-            for row in rows
-        ]
+        logging.info(f"Saved final transcript for user_id: {user_id}")

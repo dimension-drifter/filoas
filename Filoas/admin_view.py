@@ -1,93 +1,54 @@
-from flask import Flask, render_template
-from database import HotelDatabase
+from flask import Flask, render_template, jsonify
+from database import LoanDatabase
 import logging
+import json
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
-db = HotelDatabase()
+db = LoanDatabase()
 
 @app.route('/admin')
 def admin_dashboard():
-    """Admin dashboard to view all bookings"""
+    """Admin dashboard to view all loan leads"""
     return render_template('admin.html')
 
-@app.route('/admin/api/bookings')
-def get_all_bookings():
-    """API endpoint to get all bookings and user data"""
+@app.route('/admin/api/leads')
+def get_all_leads():
+    """API endpoint to get all loan lead data"""
     conn = db.get_connection()
     cursor = conn.cursor()
     
-    # Get all users
     cursor.execute("""
-        SELECT user_id, name, phone, email, created_at, total_bookings, is_verified
-        FROM users
+        SELECT id, user_id, name, phone, loan_amount, loan_tenure_months, loan_purpose, transcript, last_interaction
+        FROM loan_leads
         ORDER BY last_interaction DESC
     """)
-    users_rows = cursor.fetchall()
-    
-    # Get all room bookings
-    cursor.execute("""
-        SELECT rb.*, u.name, u.phone, u.email
-        FROM room_bookings rb
-        LEFT JOIN users u ON rb.user_id = u.user_id
-        ORDER BY rb.created_at DESC
-    """)
-    room_bookings = cursor.fetchall()
-    
-    # Get all restaurant bookings
-    cursor.execute("""
-        SELECT rb.*, u.name, u.phone, u.email
-        FROM restaurant_bookings rb
-        LEFT JOIN users u ON rb.user_id = u.user_id
-        ORDER BY rb.created_at DESC
-    """)
-    restaurant_bookings = cursor.fetchall()
-    
+    leads_rows = cursor.fetchall()
     conn.close()
     
-    return {
-        'users': [
-            {
-                'user_id': row[0],
-                'name': row[1] or 'Not provided',
-                'phone': row[2] or 'Not provided',
-                'email': row[3] or 'Not provided',
-                'created_at': row[4],
-                'total_bookings': row[5],
-                'is_verified': 'Yes' if row[6] else 'No'
-            } for row in users_rows
-        ],
-        'room_bookings': [
-            {
-                'booking_id': row[0],
-                'room_type': row[2],
-                'check_in': row[3],
-                'check_out': row[4],
-                'adults': row[5],
-                'children': row[6],
-                'special_requests': row[7],
-                'status': row[8],
-                'name': row[10],
-                'phone': row[11],
-                'email': row[12]
-            } for row in room_bookings
-        ],
-        'restaurant_bookings': [
-            {
-                'booking_id': row[0],
-                'restaurant': row[2],
-                'date': row[3],
-                'time': row[4],
-                'guests': row[5],
-                'special_requests': row[6],
-                'status': row[7],
-                'name': row[9],
-                'phone': row[10],
-                'email': row[11]
-            } for row in restaurant_bookings
-        ]
-    }
+    leads_data = []
+    for row in leads_rows:
+        transcript_data = None
+        try:
+            if row['transcript']:
+                transcript_data = json.loads(row['transcript'])
+        except json.JSONDecodeError:
+            transcript_data = "Error decoding transcript."
+
+        leads_data.append({
+            'id': row['id'],
+            'user_id': row['user_id'],
+            'name': row['name'] or 'Not provided',
+            'phone': row['phone'] or 'Not provided',
+            'loan_amount': f"₹{row['loan_amount']:,.0f}" if row['loan_amount'] else 'N/A',
+            'loan_tenure_months': f"{row['loan_tenure_months']} months" if row['loan_tenure_months'] else 'N/A',
+            'loan_purpose': row['loan_purpose'] or 'N/A',
+            'transcript': transcript_data,
+            'last_interaction': row['last_interaction']
+        })
+
+    return jsonify(leads=leads_data)
 
 if __name__ == '__main__':
     print("🎯 Admin Dashboard starting on http://localhost:5001/admin")
