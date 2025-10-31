@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Application Submitted - LoanGenie</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 600px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            padding: 50px;
+            text-align: center;
+        }
+        
+        .success-icon {
+            font-size: 80px;
+            color: #28a745;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 32px;
+        }
+        
+        .message {
+            color: #666;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+        
+        .next-steps {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 30px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+        
+        .next-steps h3 {
+            color: #333;
+            margin-bottom: 15px;
+        }
+        
+        .next-steps ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .next-steps li {
+            padding: 8px 0;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .next-steps li:last-child {
+            border-bottom: none;
+        }
+        
+        .contact-info {
+            background: #e7f3ff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            margin: 0 10px;
+            transition: all 0.3s;
+        }
+        
+        .btn:hover {
+            background: #0056b3;
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="success-icon">🎉</div>
+        
+        <h1>Application Submitted Successfully!</h1>
+        
+        <div class="message">
+            <p>Thank you for choosing LoanGenie! Your loan application has been received and is now being processed by our AI-powered system.</p>
+        </div>
+        
+        <div class="next-steps">
+            <h3>📋 What Happens Next?</h3>
+            <ul>
+                <li>✅ <strong>Document Verification:</strong> 5-10 minutes</li>
+                <li>⚡ <strong>AI Credit Assessment:</strong> 10-15 minutes</li>
+                <li>📧 <strong>Loan Decision:</strong> Within 20 minutes</li>
+                <li>💸 <strong>Fund Disbursement:</strong> Same day (if approved)</li>
+            </ul>
+        </div>
+        
+        <div class="contact-info">
+            <h3>📞 Need Help?</h3>
+            <p><strong>Customer Support:</strong> 1800-LOAN-123</p>
+            <p><strong>WhatsApp:</strong> +91-98765-43210</p>
+            <p><strong>Email:</strong> support@loangenie.com</p>
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <a href="/api/session/status" class="btn">📊 Check Status</a>
+            <a href="/" class="btn btn-secondary">🏠 Home</a>
+        </div>
+        
+        <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #eee; color: #888; font-size: 14px;">
+            <p>Application ID: <span id="applicationId">LG2025103100001</span></p>
+            <p>Submitted: <span id="submissionTime"></span></p>
+        </div>
+    </div>
+
+    <script>
+        // Set submission time
+        document.getElementById('submissionTime').textContent = new Date().toLocaleString();
+        
+        // Generate application ID from URL or session
+        const urlParams = new URLSearchParams(window.location.search);
+        const session = urlParams.get('session');
+        if (session) {
+            document.getElementById('applicationId').textContent = `LG${session.replace('_', '')}`;
+        }
+        
+        // Auto-redirect after 30 seconds (optional)
+        setTimeout(() => {
+            if (confirm('Redirect to status page?')) {
+                window.location.href = `/api/session/${session}`;
+            }
+        }, 30000);
+    </script>
+</body>
+</html>
