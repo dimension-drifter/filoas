@@ -126,7 +126,7 @@ class ReportGenerator:
         content = []
         
         # Title
-        content.append(Paragraph("LoanGenie - Loan Application Report", self.styles['CustomTitle']))
+        content.append(Paragraph("Tezloan - Loan Application Report", self.styles['CustomTitle']))
         
         # Report info table
         report_info = [

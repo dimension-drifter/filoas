@@ -18,7 +18,6 @@ from app.services.database_service import db_service
 logger = logging.getLogger(__name__)
 
 class BaseAgent(ABC):
-    """Base class for all LoanGenie agents"""
     
     def __init__(self, name: str, description: str = ""):
         self.name = name

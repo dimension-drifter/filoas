@@ -48,7 +48,7 @@ except ImportError as e:
 
 
 app = FastAPI(
-    title="LoanGenie API",
+    title="Tezloan API",
     description="Complete AI-powered loan conversation and processing system",
     version="1.0.0",
     docs_url="/docs",
@@ -109,7 +109,7 @@ class CompleteWorkflowRequest(BaseModel):
 async def root():
     """Root endpoint with API information"""
     return {
-        "service": "LoanGenie API",
+        "service": "Tezloan API",
         "version": "1.0.0",
         "status": "running",
         "description": "AI-powered loan conversation and processing system",
@@ -130,7 +130,7 @@ async def root():
             "complete_workflow": "/api/complete-workflow-no-email"
         },
         "timestamp": datetime.utcnow().isoformat(),
-        "powered_by": "LoanGenie AI • Groq • LangChain"
+        "powered_by": "Tezloan AI • Groq • LangChain"
     }
 
 @app.get("/health")
@@ -439,9 +439,9 @@ async def download_report(download_token: str):
         return FileResponse(
             report_path,
             media_type="application/pdf",
-            filename=f"loangenie_report_{validation['session_id']}.pdf",
+            filename=f"Tezloan_report_{validation['session_id']}.pdf",
             headers={
-                "Content-Disposition": f"attachment; filename=loangenie_report_{validation['session_id']}.pdf",
+                "Content-Disposition": f"attachment; filename=Tezloan_report_{validation['session_id']}.pdf",
                 "X-Downloads-Remaining": str(validation["downloads_remaining"])
             }
         )
@@ -777,7 +777,7 @@ async def internal_server_error_handler(request, exc):
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
-    logger.info("🚀 Starting LoanGenie API Server...")
+    logger.info("🚀 Starting Tezloan API Server...")
     logger.info(f"📅 Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     logger.info(f"🌍 Environment: {settings.ENVIRONMENT}")
     logger.info(f"🔖 Version: {settings.VERSION}")
@@ -801,20 +801,20 @@ async def startup_event():
     except Exception as e:
         logger.error(f"❌ Service initialization warning: {e}")
     
-    logger.info("🎉 LoanGenie API Server is ready!")
+    logger.info("🎉 Tezloan API Server is ready!")
     logger.info(f"📊 API Documentation: http://localhost:{settings.API_PORT}/docs")
     logger.info(f"🔍 Health Check: http://localhost:{settings.API_PORT}/health")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Cleanup on shutdown"""
-    logger.info("🛑 Shutting down LoanGenie API Server...")
-    logger.info("👋 Goodbye from LoanGenie!")
+    logger.info("🛑 Shutting down Tezloan API Server...")
+    logger.info("👋 Goodbye from Tezloan!")
 
 if __name__ == "__main__":
     import uvicorn
     
-    print("🚀 Starting LoanGenie API Server...")
+    print("🚀 Starting Tezloan API Server...")
     print(f"⏰ Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"🌍 Environment: {settings.ENVIRONMENT}")
     print(f"🔧 Debug Mode: {settings.DEBUG}")

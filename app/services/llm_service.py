@@ -16,7 +16,7 @@ from app.services.database_service import db_service
 logger = logging.getLogger(__name__)
 
 class LLMService:
-    """Groq LLM Service for LoanGenie"""
+    """Groq LLM Service for Tezloan"""
     
     def __init__(self):
         self.groq_client = None
@@ -51,12 +51,12 @@ class LLMService:
     
     def get_system_prompt(self) -> str:
         """Loan sales system prompt"""
-        return """You are an expert loan sales assistant for LoanGenie, India's AI-powered lending platform.
+        return """You are an expert loan sales assistant for Tezloan, India's AI-powered lending platform.
 
 Your personality:
 - Warm, friendly, and professional
 - Empathetic to customer financial needs
-- Confident about LoanGenie's benefits
+- Confident about Tezloan's benefits
 - Expert at handling objections
 
 Your knowledge:

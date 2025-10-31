@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![LoanGenie Logo](https://img.shields.io/badge/LoanGenie-AI%20Lending-blue?style=for-the-badge&logo=bank&logoColor=white)
+![TezLoan Logo](https://img.shields.io/badge/Tezloan-AI%20Lending-blue?style=for-the-badge&logo=bank&logoColor=white)
 
 [![Python](https://img.shields.io/badge/Python-3.8%2B-blue?style=flat&logo=python&logoColor=white)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104.1-green?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
@@ -12,7 +12,7 @@
 
 **Revolutionary AI-powered loan processing system with multi-agent architecture, intelligent document verification, and real-time decision making.**
 
-[🚀 Live Demo](http://localhost:8000) • [📚 Documentation](http://localhost:8000/docs) • [🎯 API Reference](http://localhost:8000/redoc) • [💬 Support](mailto:support@loangenie.com)
+[🚀 Live Demo](http://localhost:8000) • [📚 Documentation](http://localhost:8000/docs) • [🎯 API Reference](http://localhost:8000/redoc) • [💬 Support](mailto:support@Tezloan.com)
 
 </div>
 

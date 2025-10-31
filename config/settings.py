@@ -8,10 +8,10 @@ load_dotenv()
 print(f"📝 .env loaded. GROQ_API_KEY present: {bool(os.getenv('GROQ_API_KEY'))}")
 
 class Settings:
-    """LoanGenie Settings - Simple & Working"""
+    """Tezloan Settings - Simple & Working"""
     
     # Project
-    PROJECT_NAME = "LoanGenie"
+    PROJECT_NAME = "Tezloan"
     VERSION = "1.0.0"
     ENVIRONMENT = os.getenv("ENVIRONMENT", "development")
     DEBUG = os.getenv("DEBUG", "true").lower() == "true"

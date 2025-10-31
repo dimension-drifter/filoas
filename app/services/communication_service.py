@@ -150,16 +150,16 @@ class CommunicationService:
     
     def _create_whatsapp_message(self, customer_name: str, form_link: str, report_link: str = None) -> str:
         """Create WhatsApp message template"""
-        message = f"""🏦 *LoanGenie - Your Loan Application Ready!*
+        message = f"""🏦 *Tezloan - Your Loan Application Ready!*
 
 Hello {customer_name}! 👋
 
-Thanks for choosing LoanGenie for your loan needs. Your personalized application is ready:
+Thanks for choosing Tezloan for your loan needs. Your personalized application is ready:
 
 📝 *Complete Your Application:*
 {form_link}
 
-{f"📊 *Download Your Analysis Report:*\n{report_link}\n" if report_link else ""}🎯 *Why LoanGenie?*
+{f"📊 *Download Your Analysis Report:*\n{report_link}\n" if report_link else ""}🎯 *Why Tezloan?*
 ✅ Approval in 20 minutes
 ✅ Rates starting from 10.5%
 ✅ Zero hidden charges  
@@ -171,7 +171,7 @@ Thanks for choosing LoanGenie for your loan needs. Your personalized application
 Need help? Call us at 1800-LOAN-123
 
 *Best regards,*
-*Team LoanGenie* 🚀
+*Team Tezloan* 🚀
 
 _Powered by AI • Secured by Trust_"""
         
@@ -183,7 +183,7 @@ _Powered by AI • Secured by Trust_"""
         
         message = f"""Hi {customer_name}!
 
-Your LoanGenie loan application is ready:
+Your Tezloan loan application is ready:
 {short_link}
 
 ✅ Instant approval in 20 mins
@@ -199,7 +199,7 @@ Support: 1800-LOAN-123
     
     def _create_telegram_message(self, customer_name: str, form_link: str, report_link: str = None) -> str:
         """Create Telegram message template"""
-        message = f"""🏦 **LoanGenie - Loan Application Ready**
+        message = f"""🏦 **Tezloan - Loan Application Ready**
 
 Hello {customer_name}! 
 
@@ -221,13 +221,13 @@ Your personalized loan application is prepared and ready for completion.
 📞 Call: 1800-LOAN-123
 💬 Chat: Available 24/7
 
-*Team LoanGenie* 🚀"""
+*Team Tezloan* 🚀"""
         
         return message
     
     def _create_email_template(self, customer_name: str, form_link: str, report_link: str = None) -> str:
         """Create email template (for manual sending)"""
-        template = f"""Subject: Your LoanGenie Application is Ready - Complete in 5 Minutes!
+        template = f"""Subject: Your Tezloan Application is Ready - Complete in 5 Minutes!
 
 Hello {customer_name},
 
@@ -236,7 +236,7 @@ Your personalized loan application has been prepared based on our conversation.
 COMPLETE YOUR APPLICATION:
 {form_link}
 
-{f"DOWNLOAD YOUR ANALYSIS REPORT:\n{report_link}\n\n" if report_link else ""}WHY LOANGENIE?
+{f"DOWNLOAD YOUR ANALYSIS REPORT:\n{report_link}\n\n" if report_link else ""}WHY Tezloan?
 ✓ Instant approval in 15-20 minutes
 ✓ Competitive rates starting from 10.5%
 ✓ Zero processing fee for qualified applicants
@@ -248,23 +248,23 @@ IMPORTANT: Please complete your application within 24 hours to maintain your pri
 Questions? Call us at 1800-LOAN-123 or reply to this message.
 
 Best regards,
-The LoanGenie Team
+The Tezloan Team
 
 ---
-This is an automated message from LoanGenie AI Loan Assistant.
-© 2025 LoanGenie. All rights reserved."""
+This is an automated message from Tezloan AI Loan Assistant.
+© 2025 Tezloan. All rights reserved."""
         
         return template
     
     def _create_social_share_text(self, customer_name: str, form_link: str) -> str:
         """Create social media share text"""
-        return f"""🏦 Just got my personalized loan application from LoanGenie! 
+        return f"""🏦 Just got my personalized loan application from Tezloan! 
 
 Fast approval ✅
 Great rates ✅ 
 Zero hassle ✅
 
-Check out LoanGenie for your loan needs! #LoanGenie #PersonalLoan #QuickApproval"""
+Check out Tezloan for your loan needs! #Tezloan #PersonalLoan #QuickApproval"""
     
     def _create_short_link(self, long_url: str) -> str:
         """Create shortened URL (mock implementation)"""
@@ -326,7 +326,7 @@ Check out LoanGenie for your loan needs! #LoanGenie #PersonalLoan #QuickApproval
             # Create copy-paste templates
             templates = {
                 "manual_email": {
-                    "subject": f"LoanGenie - Your Loan Application Ready ({datetime.now().strftime('%Y-%m-%d')})",
+                    "subject": f"Tezloan - Your Loan Application Ready ({datetime.now().strftime('%Y-%m-%d')})",
                     "body": messages["messages"]["email_template"]
                 },
                 "manual_whatsapp": {
@@ -374,7 +374,7 @@ Check out LoanGenie for your loan needs! #LoanGenie #PersonalLoan #QuickApproval
         """Create phone conversation script"""
         return f"""📞 PHONE SCRIPT for {customer_name}:
 
-"Hello {customer_name}, this is [Your Name] from LoanGenie calling regarding your loan application.
+"Hello {customer_name}, this is [Your Name] from Tezloan calling regarding your loan application.
 
 Great news! Based on our conversation analysis, your personalized loan application has been prepared and you pre-qualify for our best rates.
 
