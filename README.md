@@ -1,4 +1,4 @@
-# 🏦 LoanGenie - AI-Powered Loan Processing System
+# Laonify - AI-Powered Loan Processing System
 
 <div align="center">
 
