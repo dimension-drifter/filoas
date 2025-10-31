@@ -193,7 +193,7 @@
         const SESSION_ID = 'web_session_' + Date.now();
         let isProcessing = false;
 
-        // Add message to chat
+        
         function addMessage(content, isUser = false, extraInfo = null) {
             const messagesContainer = document.getElementById('chatMessages');
             
@@ -207,7 +207,7 @@
             messageDiv.appendChild(contentDiv);
             messagesContainer.appendChild(messageDiv);
             
-            // Add extra info if provided
+            
             if (extraInfo && !isUser) {
                 const infoDiv = document.createElement('div');
                 infoDiv.className = 'customer-info';
@@ -231,32 +231,31 @@
                 messagesContainer.appendChild(infoDiv);
             }
             
-            // Scroll to bottom
+           
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
 
-        // Update status
+        
         function updateStatus(message) {
             document.getElementById('status').innerHTML = message;
         }
 
-        // Send message
+        
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const message = input.value.trim();
             
             if (!message || isProcessing) return;
             
-            // Add user message
             addMessage(message, true);
             input.value = '';
             
-            // Show loading
+            
             isProcessing = true;
             updateStatus('<div class="loading"></div> Processing...');
             
             try {
-                // Call API
+                
                 const response = await fetch(`${API_BASE}/api/conversation`, {
                     method: 'POST',
                     headers: {
@@ -274,14 +273,14 @@
                 
                 const data = await response.json();
                 
-                // Add bot response
+               
                 addMessage(data.ai_response, false, {
                     stage: `${data.current_stage} → ${data.next_stage}`,
                     customer_summary: data.customer_summary,
                     qualified: data.customer_qualified
                 });
                 
-                // Update status
+               
                 if (data.customer_qualified) {
                     updateStatus('🎉 Qualified for loan! Ready for next steps.');
                 } else {
@@ -297,14 +296,12 @@
             isProcessing = false;
         }
 
-        // Handle Enter key
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 sendMessage();
             }
         });
 
-        // Test API connection on load
         async function testConnection() {
             try {
                 const response = await fetch(`${API_BASE}/health`);
@@ -318,7 +315,7 @@
             }
         }
 
-        // Initialize
+       
         testConnection();
     </script>
 </body>

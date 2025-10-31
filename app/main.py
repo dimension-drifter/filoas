@@ -633,18 +633,15 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
         
         logger.info("📱 Step 4: Generating communication package...")
         
-        # Extract customer data from transcript analysis
         customer_data = {}
         if transcript_result:
             customer_data = transcript_result.get("extracted_data", {})
         
-        # Add customer contact info
         if request.customer_contact:
             if "personal_info" not in customer_data:
                 customer_data["personal_info"] = {}
             customer_data["personal_info"].update(request.customer_contact)
         
-        # Generate complete communication package
         communication_package = communication_service.generate_multi_channel_response(
             session_id, customer_data, report_path
         )
@@ -653,7 +650,6 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
         results["workflow_steps"].append("communication_package_generated")
         logger.info("✅ Communication package generated")
         
-        # Step 5: Final summary
         results["workflow_completed"] = True
         results["processing_completed"] = datetime.utcnow().isoformat()
         results["ready_to_share"] = True
@@ -684,9 +680,6 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
             "failed_at": datetime.utcnow().isoformat()
         })
 
-# ============================================================================
-# UTILITY ENDPOINTS
-# ============================================================================
 
 @app.get("/api/config")
 async def get_public_config():
@@ -751,9 +744,6 @@ async def get_system_stats():
         logger.error(f"Stats retrieval failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================================
-# ERROR HANDLERS
-# ============================================================================
 
 @app.exception_handler(404)
 async def not_found_handler(request, exc):
