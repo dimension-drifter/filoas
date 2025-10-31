@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+pydantic
+langchain
+groq
+pymongo
+reportlab
+qrcode
+httpx
+jinja2
+pillow
+pandas
+numpy
+python_dotenv
