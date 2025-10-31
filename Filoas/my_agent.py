@@ -324,7 +324,7 @@ async def entrypoint(ctx: JobContext):
     session = AgentSession(
         vad=ctx.proc.userdata["vad"],
         stt=deepgram.STT(model="nova-3", language="multi"),
-        llm=google.LLM(model="gemini-2.5-flash"),
+        llm=google.LLM(model="gemini-flash-latest"),
         tts=cartesia.TTS(language="hi", voice="faf0731e-dfb9-4cfc-8119-259a79b27e12"),
         turn_detection=MultilingualModel(),
     )

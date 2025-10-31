@@ -29,7 +29,7 @@ def cleanup(signum=None, frame=None):
 
 def check_env():
     required = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET', 
-                'DEEPGRAM_API_KEY', 'GROQ_API_KEY', 'CARTESIA_API_KEY']
+                'DEEPGRAM_API_KEY', 'CARTESIA_API_KEY']
     missing = [v for v in required if not os.getenv(v)]
     if missing:
         print("❌ Missing environment variables:", missing)
