@@ -1,9 +1,9 @@
-# app/main.py - COMPLETE LOANGENIE API SERVER
+
 import sys
 import os
 from pathlib import Path
 
-# Fix import path
+
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
@@ -17,14 +17,14 @@ from datetime import datetime
 import json
 import uuid
 
-# Setup logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
 
-# Import all services and agents
+
 try:
     from config.settings import settings
     from app.agents.conversation_agent import conversation_agent
@@ -46,7 +46,7 @@ except ImportError as e:
     print(f"Python path: {sys.path[:3]}")
     raise
 
-# Create FastAPI app
+
 app = FastAPI(
     title="LoanGenie API",
     description="Complete AI-powered loan conversation and processing system",
@@ -55,7 +55,6 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -64,9 +63,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# ============================================================================
-# REQUEST/RESPONSE MODELS
-# ============================================================================
 
 class ConversationRequest(BaseModel):
     session_id: str
@@ -108,9 +104,6 @@ class CompleteWorkflowRequest(BaseModel):
     documents: Dict[str, Any]
     customer_contact: Dict[str, Any]
 
-# ============================================================================
-# BASIC ENDPOINTS
-# ============================================================================
 
 @app.get("/")
 async def root():
@@ -144,17 +137,17 @@ async def root():
 async def health_check():
     """System health check"""
     try:
-        # Check all services
+       
         db_health = db_service.health_check()
         llm_health = llm_service.health_check()
         communication_stats = communication_service.get_communication_analytics()
         
-        # Determine overall status
+        
         overall_status = "healthy"
         if not llm_health.get("groq_connected", False):
             overall_status = "degraded"
         
-        # Get configuration status
+     
         config_validation = settings.validate()
         
         health_response = {
@@ -201,9 +194,7 @@ async def health_check():
             }
         )
 
-# ============================================================================
-# CONVERSATION ENDPOINTS
-# ============================================================================
+
 
 @app.post("/api/conversation", response_model=ConversationResponse)
 async def process_conversation(request: ConversationRequest):
@@ -211,25 +202,25 @@ async def process_conversation(request: ConversationRequest):
     try:
         logger.info(f"🎯 New conversation: {request.session_id}")
         
-        # Validate input
+       
         if not request.message.strip():
             raise HTTPException(status_code=400, detail="Empty message")
         
         if not request.session_id.strip():
             raise HTTPException(status_code=400, detail="Empty session_id")
         
-        # Process message through agent
+       
         result = await conversation_agent.process_message(
             session_id=request.session_id,
             message=request.message
         )
         
-        # Check for errors
+      
         if 'error' in result:
             logger.error(f"Agent error: {result['error']}")
             raise HTTPException(status_code=500, detail="Processing failed")
         
-        # Return response
+        
         return ConversationResponse(**result)
     
     except HTTPException:
@@ -246,8 +237,7 @@ async def get_session(session_id: str):
         
         if not session_data:
             raise HTTPException(status_code=404, detail="Session not found")
-        
-        # Return clean session data
+       
         return {
             "session_id": session_data.get("session_id"),
             "stage": session_data.get("stage"),
@@ -268,28 +258,23 @@ async def get_session(session_id: str):
         logger.error(f"Session retrieval failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================================
-# TRANSCRIPT PROCESSING ENDPOINTS
-# ============================================================================
 
 @app.post("/api/process-transcript")
 async def process_transcript(request: TranscriptRequest):
     """Process voice conversation transcript from Deepam's voice assistant"""
     try:
         logger.info(f"📝 Processing transcript for session: {request.session_id}")
-        
-        # Validate transcript
+       
         if not request.transcript.strip():
             raise HTTPException(status_code=400, detail="Empty transcript provided")
         
-        # Process through transcript agent
         result = await transcript_agent.process({
             "session_id": request.session_id,
             "transcript": request.transcript,
             "metadata": request.metadata
         })
         
-        # Add processing summary
+       
         result["processing_summary"] = {
             "transcript_length": len(request.transcript),
             "word_count": len(request.transcript.split()),
@@ -306,9 +291,7 @@ async def process_transcript(request: TranscriptRequest):
         logger.error(f"Transcript processing failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================================
-# DOCUMENT PROCESSING ENDPOINTS
-# ============================================================================
+
 
 @app.post("/api/analyze-documents")
 async def analyze_documents(request: DocumentRequest):
@@ -316,17 +299,15 @@ async def analyze_documents(request: DocumentRequest):
     try:
         logger.info(f"📄 Analyzing documents for session: {request.session_id}")
         
-        # Validate documents
+        
         if not request.documents:
             raise HTTPException(status_code=400, detail="No documents provided")
         
-        # Process through document analyzer
         result = await document_analyzer.process({
             "session_id": request.session_id,
             "documents": request.documents
         })
-        
-        # Add processing summary
+     
         result["processing_summary"] = {
             "documents_count": len(request.documents),
             "documents_analyzed": list(request.documents.keys()),
@@ -352,13 +333,12 @@ async def upload_documents(
     try:
         logger.info(f"📤 Document upload for session: {session_id}, files: {len(files)}")
         
-        # Process uploaded files
+        
         documents = {}
         for file in files:
-            # Read file content
+            
             file_content = await file.read()
             
-            # Determine document type based on filename
             filename_lower = file.filename.lower()
             
             if "pan" in filename_lower:
@@ -379,8 +359,7 @@ async def upload_documents(
                 "content_type": file.content_type,
                 "status": "uploaded"
             }
-        
-        # Process through KYC agent
+       
         kyc_result = await kyc_agent.process({
             "customer_id": session_id,
             "documents": documents,
@@ -400,9 +379,6 @@ async def upload_documents(
         logger.error(f"Document upload failed: {e}")
         raise HTTPException(status_code=500, detail=f"Document upload failed: {str(e)}")
 
-# ============================================================================
-# REPORT GENERATION ENDPOINTS
-# ============================================================================
 
 @app.post("/api/generate-report")
 async def generate_comprehensive_report(request: ReportRequest):
@@ -410,11 +386,10 @@ async def generate_comprehensive_report(request: ReportRequest):
     try:
         logger.info(f"📊 Generating report for session: {request.session_id}")
         
-        # Validate input data
+        
         if not request.transcript_data and not request.document_data:
             raise HTTPException(status_code=400, detail="Either transcript_data or document_data must be provided")
-        
-        # Generate PDF report
+      
         report_path = report_generator.generate_comprehensive_report(
             request.session_id,
             request.transcript_data,
@@ -422,10 +397,9 @@ async def generate_comprehensive_report(request: ReportRequest):
             request.additional_data
         )
         
-        # Generate secure download link
         download_link = communication_service.generate_report_download_link(request.session_id, report_path)
         
-        # Get file size
+        
         file_size = os.path.getsize(report_path) if os.path.exists(report_path) else 0
         
         return {
@@ -450,7 +424,7 @@ async def generate_comprehensive_report(request: ReportRequest):
 async def download_report(download_token: str):
     """Download report using secure token"""
     try:
-        # Validate download token
+       
         validation = communication_service.validate_download_token(download_token)
         
         if not validation["valid"]:
@@ -458,11 +432,10 @@ async def download_report(download_token: str):
         
         report_path = validation["report_path"]
         
-        # Check if file exists
+       
         if not os.path.exists(report_path):
             raise HTTPException(status_code=404, detail="Report file not found")
         
-        # Return file
         return FileResponse(
             report_path,
             media_type="application/pdf",
@@ -479,17 +452,13 @@ async def download_report(download_token: str):
         logger.error(f"Report download failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================================
-# COMMUNICATION ENDPOINTS (EMAIL-FREE)
-# ============================================================================
 
 @app.post("/api/generate-communication-package")
 async def generate_communication_package(request: CommunicationRequest):
     """Generate complete communication package without email dependency"""
     try:
         logger.info(f"📱 Generating communication package for session: {request.session_id}")
-        
-        # Generate complete multi-channel package
+      
         package = communication_service.generate_multi_channel_response(
             request.session_id,
             request.customer_data,
@@ -506,19 +475,19 @@ async def generate_communication_package(request: CommunicationRequest):
 async def get_communication_templates(session_id: str):
     """Get ready-to-use communication templates for manual sending"""
     try:
-        # Load session data to get customer info
+        
         session_data = db_service.load_conversation(session_id)
         
         if session_data:
             customer_data = session_data.get("customer_data", {})
         else:
-            # Use sample data for demo
+            
             customer_data = {
                 "personal_info": {"name": "Valued Customer"},
                 "loan_details": {"loan_amount": 500000, "loan_purpose": "personal"}
             }
         
-        # Generate communication templates
+       
         templates = communication_service.generate_multi_channel_response(
             session_id, customer_data
         )
@@ -566,9 +535,6 @@ async def get_communication_analytics():
         logger.error(f"Analytics retrieval failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================================
-# ORCHESTRATOR ENDPOINTS
-# ============================================================================
 
 @app.post("/api/orchestrator/process")
 async def orchestrator_process(request_data: dict):
@@ -601,15 +567,13 @@ async def complete_loan_journey(request_data: dict):
         logger.error(f"Complete journey processing failed: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
-# ============================================================================
-# COMPLETE WORKFLOW ENDPOINTS (MAIN INTEGRATION)
-# ============================================================================
+
 
 @app.post("/api/complete-workflow-no-email")
 async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
     """Complete workflow: Transcript + Documents → Report → Communication (NO EMAIL)"""
     try:
-        # Generate session ID if not provided
+       
         session_id = request.session_id or f"deepam_session_{int(datetime.utcnow().timestamp())}"
         
         logger.info(f"🚀 Starting complete workflow for session: {session_id}")
@@ -620,7 +584,7 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
             "processing_started": datetime.utcnow().isoformat()
         }
         
-        # Step 1: Process transcript
+    
         transcript_result = None
         if request.transcript.strip():
             logger.info("📝 Step 1: Processing transcript...")
@@ -633,7 +597,7 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
             results["workflow_steps"].append("transcript_processed")
             logger.info("✅ Transcript processing completed")
         
-        # Step 2: Analyze documents
+        
         document_result = None
         if request.documents:
             logger.info("📄 Step 2: Analyzing documents...")
@@ -645,7 +609,7 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
             results["workflow_steps"].append("documents_analyzed")
             logger.info("✅ Document analysis completed")
         
-        # Step 3: Generate comprehensive report
+        
         report_path = None
         if transcript_result or document_result:
             logger.info("📊 Step 3: Generating comprehensive report...")
@@ -655,7 +619,7 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
                 document_result or {}
             )
             
-            # Generate download link
+            
             download_link = communication_service.generate_report_download_link(session_id, report_path)
             
             results["report"] = {
@@ -666,7 +630,7 @@ async def complete_deepam_workflow_no_email(request: CompleteWorkflowRequest):
             results["workflow_steps"].append("report_generated")
             logger.info("✅ Report generation completed")
         
-        # Step 4: Generate communication package
+        
         logger.info("📱 Step 4: Generating communication package...")
         
         # Extract customer data from transcript analysis
@@ -819,9 +783,6 @@ async def internal_server_error_handler(request, exc):
         }
     )
 
-# ============================================================================
-# STARTUP/SHUTDOWN EVENTS
-# ============================================================================
 
 @app.on_event("startup")
 async def startup_event():
@@ -831,7 +792,6 @@ async def startup_event():
     logger.info(f"🌍 Environment: {settings.ENVIRONMENT}")
     logger.info(f"🔖 Version: {settings.VERSION}")
     
-    # Validate configuration
     validation = settings.validate()
     if not validation["valid"]:
         logger.error("❌ Invalid configuration:")
@@ -841,7 +801,6 @@ async def startup_event():
     else:
         logger.info("✅ Configuration validated successfully")
     
-    # Test service connections
     try:
         db_health = db_service.health_check()
         logger.info(f"✅ Database service: {db_health['overall']}")
@@ -861,10 +820,6 @@ async def shutdown_event():
     """Cleanup on shutdown"""
     logger.info("🛑 Shutting down LoanGenie API Server...")
     logger.info("👋 Goodbye from LoanGenie!")
-
-# ============================================================================
-# MAIN ENTRY POINT
-# ============================================================================
 
 if __name__ == "__main__":
     import uvicorn
@@ -896,32 +851,32 @@ if __name__ == "__main__":
 async def serve_loan_application_form(form_token: str):
     """Serve personalized loan application form"""
     try:
-        # Validate token
+       
         validation = communication_service.validate_form_token(form_token)
         
         if not validation["valid"]:
             raise HTTPException(status_code=400, detail=validation["error"])
         
-        # Read HTML file
+        
         html_path = Path("frontend/loan-application-form.html")
         if not html_path.exists():
             raise HTTPException(status_code=404, detail="Form not found")
         
-        # Read and customize HTML
+        
         with open(html_path, 'r', encoding='utf-8') as f:
             html_content = f.read()
         
-        # Inject customer data
+        
         customer_data = validation["customer_data"]
         session_id = validation["session_id"]
         
-        # Replace placeholders in HTML
+        
         html_content = html_content.replace(
             'value=""',  # Empty session ID
             f'value="{session_id}"'
         )
         
-        # Add customer name if available
+        
         customer_name = customer_data.get("personal_info", {}).get("name", "")
         if customer_name:
             html_content = html_content.replace(
