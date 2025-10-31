@@ -1,4 +1,4 @@
-# Laonify - AI-Powered Loan Processing System
+# Tezloan - AI-Powered Loan Processing System
 
 <div align="center">
 
