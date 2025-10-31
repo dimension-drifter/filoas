@@ -1,4 +1,3 @@
-<!-- loan-application-form.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -206,10 +205,10 @@
         
         <div class="form-content">
             <form id="loanApplicationForm">
-                <!-- Hidden field for session tracking -->
+                
                 <input type="hidden" id="sessionId" name="sessionId" value="">
                 
-                <!-- SECTION 1: PERSONAL INFORMATION -->
+                
                 <div class="section">
                     <h2 class="section-title">Personal Information</h2>
                     
@@ -257,7 +256,7 @@
                     </div>
                 </div>
                 
-                <!-- SECTION 2: LOAN DETAILS -->
+                
                 <div class="section">
                     <h2 class="section-title">Loan Details</h2>
                     
@@ -312,7 +311,7 @@
                     </div>
                 </div>
                 
-                <!-- SECTION 3: EMPLOYMENT INFORMATION -->
+                
                 <div class="section">
                     <h2 class="section-title">Employment Information</h2>
                     
@@ -362,7 +361,7 @@
                     </div>
                 </div>
                 
-                <!-- SECTION 4: FINANCIAL INFORMATION -->
+                
                 <div class="section">
                     <h2 class="section-title">💳 Financial Information</h2>
                     
@@ -411,12 +410,12 @@
                     </div>
                 </div>
                 
-                <!-- SECTION 5: DOCUMENT UPLOAD -->
+                
                 <div class="section">
                     <h2 class="section-title">📄 Document Upload</h2>
                     <p style="color: #666; margin-bottom: 20px;">Please upload clear images/scans of the following documents:</p>
                     
-                    <!-- PAN Card Upload -->
+                    
                     <div class="form-group">
                         <label>PAN Card * (Image/PDF)</label>
                         <div class="file-upload" onclick="triggerFileInput('panCard')">
@@ -440,7 +439,7 @@
                         <div id="aadharCardFiles" class="uploaded-files"></div>
                     </div>
                     
-                    <!-- Salary Slips Upload -->
+                    
                     <div class="form-group">
                         <label>Last 3 Salary Slips * (Image/PDF)</label>
                         <div class="file-upload" onclick="triggerFileInput('salarySlips')">
@@ -452,7 +451,7 @@
                         <div id="salarySlipsFiles" class="uploaded-files"></div>
                     </div>
                     
-                    <!-- Bank Statement Upload -->
+                    
                     <div class="form-group">
                         <label>Bank Statement * (Last 6 months - PDF)</label>
                         <div class="file-upload" onclick="triggerFileInput('bankStatement')">
@@ -464,7 +463,7 @@
                         <div id="bankStatementFiles" class="uploaded-files"></div>
                     </div>
                     
-                    <!-- Optional Documents -->
+                    
                     <div class="form-group">
                         <label>Additional Documents (Optional)</label>
                         <div class="file-upload" onclick="triggerFileInput('additionalDocs')">
@@ -476,7 +475,7 @@
                     </div>
                 </div>
                 
-                <!-- SECTION 6: TERMS AND CONDITIONS -->
+                
                 <div class="section">
                     <h2 class="section-title">📋 Terms & Conditions</h2>
                     
@@ -502,7 +501,7 @@
                     </div>
                 </div>
                 
-                <!-- SUBMIT SECTION -->
+                
                 <div class="section" style="text-align: center;">
                     <button type="submit" class="btn btn-primary" id="submitBtn">
                         🚀 Submit Application
@@ -527,43 +526,43 @@
         document.getElementById('sessionId').value = sessionId;
         localStorage.setItem('loanSessionId', sessionId);
 
-        // Initialize form
+        
         document.addEventListener('DOMContentLoaded', function() {
             updateProgress();
             setupEventListeners();
             prefillFromUrl();
         });
 
-        // Setup all event listeners
+        
         function setupEventListeners() {
-            // EMI Calculator
+            
             ['loanAmount', 'preferredTenure'].forEach(id => {
                 document.getElementById(id).addEventListener('input', calculateEMI);
             });
             
-            // Income validation
+            
             document.getElementById('monthlyIncome').addEventListener('input', validateIncome);
             document.getElementById('loanAmount').addEventListener('input', validateLoanAmount);
             
-            // File upload handlers
+            
             ['panCard', 'aadharCard', 'salarySlips', 'bankStatement', 'additionalDocs'].forEach(id => {
                 document.getElementById(id).addEventListener('change', function(e) {
                     handleFileUpload(e, id);
                 });
             });
             
-            // Form submission
+            
             document.getElementById('loanApplicationForm').addEventListener('submit', handleFormSubmit);
             
-            // Auto-save functionality
-            setInterval(saveDraft, 30000); // Auto-save every 30 seconds
+            
+            setInterval(saveDraft, 30000); 
         }
 
-        // Prefill form from URL parameters (from conversation data)
+        
         function prefillFromUrl() {
             const urlParams = new URLSearchParams(window.location.search);
             
-            // Prefill known data
+            
             if (urlParams.get('name')) {
                 const nameParts = urlParams.get('name').split(' ');
                 document.getElementById('firstName').value = nameParts[0] || '';
@@ -585,7 +584,7 @@
             }
         }
 
-        // File upload handling
+        
         function triggerFileInput(inputId) {
             document.getElementById(inputId).click();
         }
@@ -599,23 +598,23 @@
             }
             
             Array.from(files).forEach(file => {
-                // Validate file size
+                
                 if (file.size > 10 * 1024 * 1024) { // 10MB limit
                     showError(`File ${file.name} is too large. Maximum size is 10MB.`);
                     return;
                 }
                 
-                // Validate file type
+               
                 const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
                 if (!allowedTypes.includes(file.type)) {
                     showError(`File ${file.name} has unsupported format.`);
                     return;
                 }
                 
-                // Add to uploaded files
+                
                 uploadedFiles[inputType].push(file);
                 
-                // Create file display element
+                
                 const fileItem = document.createElement('div');
                 fileItem.className = 'file-item success';
                 fileItem.innerHTML = `
@@ -633,7 +632,7 @@
         function removeFile(inputType, fileName) {
             uploadedFiles[inputType] = uploadedFiles[inputType].filter(file => file.name !== fileName);
             
-            // Refresh display
+            
             const container = document.getElementById(inputType + 'Files');
             container.innerHTML = '';
             
@@ -648,7 +647,7 @@
             });
         }
 
-        // Upload files to server
+       
         async function uploadToServer(inputType, files) {
             const formData = new FormData();
             formData.append('session_id', sessionId);
@@ -669,7 +668,7 @@
                     const result = await response.json();
                     showStatus('Documents uploaded successfully!', 'success');
                     
-                    // Mark documents as uploaded in UI
+                    
                     document.querySelectorAll(`#${inputType}Files .file-item`).forEach(item => {
                         item.classList.add('success');
                     });
@@ -683,7 +682,7 @@
             }
         }
 
-        // EMI Calculator
+        
         function calculateEMI() {
             const amount = parseFloat(document.getElementById('loanAmount').value) || 0;
             const tenure = parseInt(document.getElementById('preferredTenure').value) || 36;
@@ -701,7 +700,7 @@
             }
         }
 
-        // Validation functions
+        
         function validateIncome() {
             const income = parseFloat(document.getElementById('monthlyIncome').value) || 0;
             const infoDiv = document.getElementById('incomeInfo');
@@ -740,7 +739,7 @@
             }
         }
 
-        // Progress calculation
+        
         function updateProgress() {
             const requiredFields = ['firstName', 'lastName', 'email', 'phone', 'loanAmount', 'loanPurpose', 'employmentType', 'employer', 'monthlyIncome'];
             const requiredDocs = ['panCard', 'aadharCard', 'salarySlips', 'bankStatement'];
@@ -763,7 +762,7 @@
             document.getElementById('progressFill').style.width = progress + '%';
         }
 
-        // Form submission
+        
         async function handleFormSubmit(event) {
             event.preventDefault();
             
@@ -772,19 +771,19 @@
             submitBtn.textContent = '⏳ Submitting...';
             
             try {
-                // Collect form data
+                
                 const formData = new FormData(document.getElementById('loanApplicationForm'));
                 const applicationData = {};
                 
-                // Convert FormData to object
+                
                 for (let [key, value] of formData.entries()) {
                     applicationData[key] = value;
                 }
                 
-                // Add uploaded files info
+                
                 applicationData.uploadedDocuments = uploadedFiles;
                 
-                // Submit to backend
+                
                 const response = await fetch(`${API_BASE}/api/submit-application`, {
                     method: 'POST',
                     headers: {
@@ -797,7 +796,7 @@
                     const result = await response.json();
                     showStatus('✅ Application submitted successfully! You will receive a confirmation shortly.', 'success');
                     
-                    // Redirect to thank you page
+                    
                     setTimeout(() => {
                         window.location.href = `/thank-you?session=${sessionId}`;
                     }, 3000);
@@ -814,7 +813,7 @@
             }
         }
 
-        // Save draft functionality
+       
         function saveDraft() {
             const formData = new FormData(document.getElementById('loanApplicationForm'));
             const draftData = {};
@@ -827,7 +826,7 @@
             showStatus('Draft saved automatically', 'info');
         }
 
-        // Utility functions
+        
         function showStatus(message, type) {
             const statusDiv = document.getElementById('submitStatus');
             statusDiv.innerHTML = `<div class="${type}">${message}</div>`;
@@ -841,7 +840,7 @@
             showStatus(message, 'error');
         }
 
-        // Auto-update progress on input
+        
         document.addEventListener('input', function() {
             setTimeout(updateProgress, 100);
         });
